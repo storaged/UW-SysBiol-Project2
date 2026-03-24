@@ -1,0 +1,1 @@
+python3 -m venv .venv && source .venv/bin/activate && pip install -U pip && pip install -r requirements.txt && python -m ipykernel install --user --name=sysbiol-p2 --display-name="Python (SysBiol Project 2)" && echo "✓ Environment ready. Select kernel 'Python (SysBiol Project 2)' in VS Code / Jupyter."

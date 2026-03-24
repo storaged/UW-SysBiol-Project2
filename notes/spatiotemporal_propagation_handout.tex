@@ -1,0 +1,598 @@
+\documentclass[11pt,a4paper]{article}
+
+% ─── Packages ────────────────────────────────────────────────────────────────
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{framed}
+
+% ─── Colours ─────────────────────────────────────────────────────────────────
+\definecolor{biogreen}{RGB}{30,120,70}
+\definecolor{mathblue}{RGB}{10,60,140}
+\definecolor{boxframe}{RGB}{100,130,200}
+\definecolor{shadecolor}{RGB}{245,248,255}  % used by framed's snugshade
+
+% ─── Hyperref setup ──────────────────────────────────────────────────────────
+\hypersetup{
+  colorlinks=true,
+  linkcolor=mathblue,
+  urlcolor=mathblue,
+  citecolor=mathblue
+}
+
+% ─── Theorem environments ────────────────────────────────────────────────────
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{remark}{Remark}[section]
+\newtheorem{example}{Example}[section]
+
+\theoremstyle{plain}
+\newtheorem{proposition}{Proposition}[section]
+
+% ─── Notation shorthands ─────────────────────────────────────────────────────
+\newcommand{\sig}[2]{S_{#1}(#2)}
+\newcommand{\dS}[2]{\Delta S_{#1}(#2)}
+\newcommand{\Nb}[2]{\mathcal{N}_{#1}(#2)}
+\newcommand{\JE}[2]{\mathcal{J}_{#1}(#2)}
+\newcommand{\FJ}[2]{\mathcal{F}_{#1}(#2)}
+\newcommand{\expo}[2]{E_{#1}(#2)}
+\newcommand{\RD}{\mathrm{RD}}
+\newcommand{\RR}{\mathrm{RR}}
+\newcommand{\pE}{p_{\mathrm{exp}}}
+\newcommand{\pU}{p_{\mathrm{unexp}}}
+\newcommand{\1}[1]{\mathbf{1}\!\left[#1\right]}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries\color{mathblue}
+    Spatiotemporal Signal Propagation\\[4pt]
+    in Live-Cell Imaging Data}\\[10pt]
+  {\large A Mathematical Formalization}\\[6pt]
+  {\normalsize Academic Handout~--- Systems Biology, University of Warsaw}\\[4pt]
+  {\small\color{gray}
+    Companion to \texttt{spatiotemporal\_signal\_propagation.py}
+    and \texttt{compare\_spatiotemporal\_behavior.py}}
+\end{center}
+
+\vspace{0.5em}
+\noindent\rule{\linewidth}{0.8pt}
+\vspace{1em}
+
+\tableofcontents
+\bigskip
+\noindent\rule{\linewidth}{0.4pt}
+\bigskip
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Biological Setting and Motivation}
+% ─────────────────────────────────────────────────────────────────────────────
+
+The data originate from live-cell fluorescence microscopy experiments on
+\textbf{MCF10A} cells (a non-tumorigenic human mammary epithelial line). Each
+cell carries two fluorescent kinase-activity reporters:
+
+\begin{itemize}
+  \item \textbf{ErkKTR} --- an ERK kinase translocation reporter whose
+        cytoplasmic-to-nuclear fluorescence ratio (\texttt{ERKKTR\_ratio})
+        is a real-time proxy for ERK activity.
+  \item \textbf{FoxO3A} --- a nuclear/cytoplasmic ratio reporter for the
+        PI3K$\to$AKT$\to$FoxO3A signalling axis.
+\end{itemize}
+
+Cells were growth-factor-deprived for 48~h prior to acquisition, seeded in
+96-well plates ($\sim 25\,000$ cells/well), and imaged every
+$\Delta t = 5$~min for a total of $T_{\max} = 24$~h (up to $288$ frames).
+The dataset spans six replicate experiments and $28$ imaging sites assigned to
+different \emph{PI3K-pathway genetic backgrounds}: wild-type (WT),
+\textbf{AKT1}~E17K, \textbf{PIK3CA}~E545K, \textbf{PIK3CA}~H1047R, and
+\textbf{PTEN} deletion.
+
+\bigskip
+\begin{snugshade}
+\noindent\textbf{Core biological question.}
+\emph{When a cell shows a sudden, large increase (``jump'') in ERK or FoxO3A
+activity, are its spatial neighbours more likely to show their own large
+activity increase shortly afterwards?}
+If yes, this suggests local cell-to-cell signalling or coordinated behaviour,
+and we want to quantify how strongly this effect depends on the genetic
+background.
+\end{snugshade}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Data Model: Cells, Tracks, and Nodes}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\subsection{Primary observables}
+
+Let $\mathcal{C}$ be the set of all \emph{cell tracks} in one
+experiment-site block. A track $k \in \mathcal{C}$ is a sequence of
+time-resolved observations of the \emph{same physical cell}.
+Let $T_k \subseteq \{1, 2, \ldots, T_{\max}\}$ be the set of frames during
+which track $k$ is observed.
+
+\begin{definition}[Node]\label{def:node}
+A \emph{node} is a pair $v = (k,t)$ with $k \in \mathcal{C}$ and
+$t \in T_k$. The set of all nodes is
+\[
+  V \;=\; \bigl\{(k,t) \;\big|\; k \in \mathcal{C},\; t \in T_k\bigr\}.
+\]
+Each node $(k,t)$ carries:
+\begin{align*}
+  \bm{x}(k,t) &= \bigl(x_{k,t},\, y_{k,t}\bigr) \in \mathbb{R}^2
+    && \text{nuclear centroid (image pixels),}\\
+  \sig{k}{t}  &\in \mathbb{R}_{>0}
+    && \text{fluorescence ratio (signal channel),}\\
+  A(k,t)      &\in \mathbb{R}_{>0}
+    && \text{nuclear area (pixels).}
+\end{align*}
+\end{definition}
+
+\begin{remark}
+Physical time in hours is $t_{\mathrm{h}} = t \cdot \Delta t / 60$
+with $\Delta t = 5$~min.
+\end{remark}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Graph Construction}
+% ─────────────────────────────────────────────────────────────────────────────
+
+The scripts build a \emph{spatiotemporal graph}
+$G = (V,\, E_{\mathrm{sp}} \cup E_{\mathrm{tm}})$
+with two disjoint families of edges.
+
+\subsection{Spatial edges}
+
+\begin{definition}[Spatial neighbourhood]\label{def:spatial-nb}
+For node $(k,t)$ and radius $r > 0$, the \emph{spatial neighbourhood} is
+\[
+  \Nb{k}{t} \;=\;
+  \bigl\{(k',t) \;\big|\; k' \neq k,\;
+    \|\bm{x}(k,t) - \bm{x}(k',t)\|_2 \leq r\bigr\}.
+\]
+A \emph{spatial edge} exists between $(k,t)$ and $(k',t)$ whenever
+$(k',t) \in \Nb{k}{t}$, i.e.\ both cells are within distance $r$ of each
+other \emph{at the same frame $t$}. The full set is
+\[
+  E_{\mathrm{sp}} \;=\;
+  \bigl\{\{(k,t),(k',t)\} \;\big|\; (k',t) \in \Nb{k}{t}\bigr\}.
+\]
+\end{definition}
+
+The default radius is $r = 60$ image-coordinate units. Spatial edges are
+\emph{undirected} and \emph{frame-local}: a cell pair is connected only at
+the frame(s) at which they are close.
+
+\begin{remark}[Efficient computation via $k$-d trees]
+At each frame $t$, all nuclear centroids are inserted into a
+\emph{$k$-d tree} (a balanced binary space-partition structure).
+Querying all pairs within radius $r$ costs
+$\mathcal{O}(|V_t|\log|V_t| + |E_{\mathrm{sp},t}|)$ per frame,
+where $V_t = \{(k,t) \mid t \in T_k\}$.
+The $k$-d tree approach is therefore far more efficient than naively
+checking all $\binom{|V_t|}{2}$ pairs.
+\end{remark}
+
+\subsection{Temporal edges}
+
+\begin{definition}[Temporal edge]\label{def:temporal-edge}
+For each track $k$ and each pair of \emph{consecutive observed frames}
+$t, t' \in T_k$ with $t < t'$ and no intervening observation in $T_k$,
+there is a \emph{directed temporal edge} $(k,t) \to (k,t')$. The set is
+\[
+  E_{\mathrm{tm}} \;=\;
+  \bigl\{(k,t) \to (k,t') \;\big|\; k \in \mathcal{C},\;
+    t' = \min_{s \in T_k,\; s > t} s\bigr\}.
+\]
+\end{definition}
+
+Each temporal edge records the frame gap $\delta = t' - t$ (nominally
+$\delta = 1$, but tracking gaps can exceed one frame) and the physical
+time gap $\delta \cdot \Delta t$ in minutes.
+
+\begin{remark}[Graph structure]
+The temporal edges alone form a collection of directed paths --- one per
+track --- corresponding to the trajectories of individual cells over time.
+Adding spatial edges introduces \emph{cross-track} connections at each
+frame, converting the path collection into a richer spatiotemporal graph.
+\end{remark}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Signal Dynamics and Jump Detection}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\subsection{First difference (signal delta)}
+
+Along each temporal edge $(k,t) \to (k,t')$ in $E_{\mathrm{tm}}$, define the
+\emph{signal increment}
+\[
+  \dS{k}{t'} \;=\; \sig{k}{t'} - \sig{k}{t}.
+\]
+When $(k,t)$ is the first observed frame of track $k$ (i.e.\ $(k,t)$ has no
+incoming temporal edge), $\dS{k}{t}$ is undefined (\texttt{NaN}).
+
+\subsection{Data-driven jump threshold}
+
+\begin{definition}[Jump threshold]\label{def:threshold}
+Let
+\[
+  \mathcal{D}^+ \;=\;
+  \bigl\{\dS{k}{t} \;\big|\; (k,t) \in V,\; \dS{k}{t} > 0\bigr\}
+\]
+be the multiset of all \emph{positive} signal increments in the block.
+For a chosen quantile $q \in (0,1)$, the \emph{data-driven jump threshold}
+is
+\[
+  \theta_q \;=\; Q_q\!\bigl(\mathcal{D}^+\bigr),
+\]
+where $Q_q$ is the $q$-th empirical quantile.
+The default is $q = 0.90$, so $\theta_{0.90}$ equals the 90th percentile of
+all upward steps in the block.
+A user-supplied fixed threshold overrides this per-block estimate.
+\end{definition}
+
+\subsection{Jump event indicator}
+
+\begin{definition}[Jump event]\label{def:jump}
+For node $(k,t)$, the \emph{jump event indicator} is
+\[
+  \JE{k}{t} \;=\; \1{\dS{k}{t} \geq \theta},
+\]
+using the convention $\JE{k}{t} = 0$ when $\dS{k}{t}$ is undefined.
+\end{definition}
+
+Intuitively, $\JE{k}{t} = 1$ means cell $k$ at frame $t$ shows a ``sharp
+upward step'' in signal activity that is in the top $(1-q)$ fraction of all
+positive changes observed across the block.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Spatiotemporal Exposure and Future Response}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\subsection{Future self-jump indicator}
+
+\begin{definition}[Future self-jump]\label{def:future-jump}
+For node $(k,t)$ and a \emph{future window} $W \in \mathbb{Z}_{>0}$ (frames),
+the \emph{future self-jump indicator} is
+\[
+  \FJ{k}{t} \;=\;
+  \1{\exists\, t' \in T_k \;:\; t < t' \leq t + W \;\text{and}\; \JE{k}{t'} = 1}.
+\]
+Thus $\FJ{k}{t} = 1$ if and only if cell $k$ itself undergoes at least one
+jump within the next $W$ frames. The default is $W = 3$, corresponding to a
+$15$-minute look-ahead window.
+\end{definition}
+
+The future self-jump is computed by a forward scan along each track:
+for every node $(k,t)$, the algorithm inspects subsequent frames
+$t+1, t+2, \ldots$ until either a jump is found or the window $W$ is
+exhausted.
+
+\subsection{Spatial exposure}
+
+\begin{definition}[Neighbourhood statistics and exposure]\label{def:exposure}
+For node $(k,t)$, define:
+\begin{align}
+  n(k,t)       &= |\Nb{k}{t}|
+    && \text{(spatial neighbour count),} \label{eq:n}\\[3pt]
+  m(k,t)       &= \sum_{(k',t)\,\in\,\Nb{k}{t}} \JE{k'}{t}
+    && \text{(number of jumping neighbours at frame $t$),} \label{eq:m}\\[3pt]
+  \bar{S}(k,t) &= \frac{1}{n(k,t)}
+                   \sum_{(k',t)\,\in\,\Nb{k}{t}} \sig{k'}{t}
+    && \text{(mean neighbour signal; undefined if $n(k,t)=0$).} \label{eq:Sbar}
+\end{align}
+The \emph{exposure indicator} is
+\[
+  \expo{k}{t} \;=\; \1{m(k,t) > 0},
+\]
+equal to $1$ when at least one spatial neighbour of cell $k$ is currently
+undergoing a jump.
+\end{definition}
+
+\begin{remark}
+Because spatial edges are rebuilt per frame, $\Nb{k}{t}$ and hence $n(k,t)$
+can differ at each time point as cells migrate within the imaging field.
+\end{remark}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Propagation Statistics}
+% ─────────────────────────────────────────────────────────────────────────────
+
+The central question is whether exposure to a jumping neighbour
+\emph{right now} is predictive of a future self-jump. We operationalise this
+with two classical epidemiological estimators applied to cell-time nodes.
+
+\subsection{Exposed and unexposed populations}
+
+Partition $V$ into two disjoint subsets:
+\[
+  V_{\mathrm{exp}}   = \{(k,t) \in V \mid \expo{k}{t} = 1\},\qquad
+  V_{\mathrm{unexp}} = \{(k,t) \in V \mid \expo{k}{t} = 0\}.
+\]
+
+\subsection{Conditional future-jump rates}
+
+Define the \emph{conditional future-jump rates}
+\begin{align}
+  \pE &= \Pr\!\bigl(\FJ{k}{t}=1 \;\big|\; \expo{k}{t}=1\bigr)
+       \;\approx\; \frac{1}{|V_{\mathrm{exp}}|}
+         \sum_{(k,t)\,\in\, V_{\mathrm{exp}}} \FJ{k}{t},
+       \label{eq:pE}\\[6pt]
+  \pU &= \Pr\!\bigl(\FJ{k}{t}=1 \;\big|\; \expo{k}{t}=0\bigr)
+       \;\approx\; \frac{1}{|V_{\mathrm{unexp}}|}
+         \sum_{(k,t)\,\in\, V_{\mathrm{unexp}}} \FJ{k}{t}.
+       \label{eq:pU}
+\end{align}
+
+\subsection{Risk difference and relative risk}
+
+\begin{definition}[Risk difference and relative risk]\label{def:RD-RR}
+\begin{align}
+  \RD &\;=\; \pE \;-\; \pU, \label{eq:RD}\\[4pt]
+  \RR &\;=\; \frac{\pE}{\pU} \qquad (\pU > 0). \label{eq:RR}
+\end{align}
+\end{definition}
+
+\paragraph{Interpretation.}
+\begin{itemize}
+  \item $\RD = 0$ (or $\RR = 1$): neighbour jumping has no association
+        with future self-jumping.
+  \item $\RD > 0$ (or $\RR > 1$): exposed cell-time points are more likely
+        to be followed by a self-jump.
+        An $\RD$ of $0.05$ is a $5$ percentage-point absolute increase.
+        An $\RR$ of $1.76$ means exposed cells are $\approx 1.76\times$ more
+        likely to jump in the near future.
+  \item $\RD < 0$ (or $\RR < 1$): exposure is associated with a
+        \emph{lower} future-jump probability (potential suppression).
+\end{itemize}
+
+\subsection{Empirical example}
+
+For the WT condition in this dataset (one block, ERK signal):
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{lrrrrrr}
+\toprule
+Mutation & $|V|$ & $|E_{\mathrm{sp}}|$ & $\theta$ & $\pE$ & $\pU$ & $\RR$ \\
+\midrule
+WT & $356{,}632$ & $2{,}389{,}504$ & 0.034 & 0.131 & 0.075 & 1.756 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Wild-type cells whose neighbour jumps \emph{now} are roughly $75\%$ more likely
+to show their own ERK jump within the next 15 minutes.
+
+\begin{remark}[Statistical note]
+Equations \eqref{eq:pE} and \eqref{eq:pU} treat every node as an
+independent observation. This is a simplification: nodes from the same track
+are serially correlated, and spatially adjacent nodes share neighbourhood
+structure. A rigorous inference (e.g.\ permutation test with tracks as units,
+or a mixed-effects log-binomial regression) is needed to assign valid
+$p$-values to $\RR$.
+\end{remark}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Multi-Block Comparison Framework}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\subsection{Block-level summaries}
+
+An \emph{experiment-site block} $\mathcal{B}_{e,s}$ is the subset of all
+observations belonging to experiment $e$ and imaging site $s$.
+Let
+$\mathcal{B} = \{\mathcal{B}_{e_1,s_1}, \ldots, \mathcal{B}_{e_B,s_B}\}$
+be the collection of blocks remaining after filtering (e.g.\ removing the
+ErbB2 condition from the comparison).
+
+Running the single-block algorithm of Section~5 on each block $b$ yields the
+summary tuple
+\[
+  \phi(b) \;=\;
+  \bigl(n_b,\; |E_{\mathrm{sp},b}|,\; |E_{\mathrm{tm},b}|,\;
+    \theta_b,\; \pE^{(b)},\; \pU^{(b)},\; \RD^{(b)},\; \RR^{(b)}\bigr),
+\]
+where $n_b = |V_b|$ and $\theta_b$ is computed per-block when no global
+threshold is supplied.
+
+\subsection{Group-level aggregation}
+
+Let $\gamma : \mathcal{B} \to \Gamma$ assign each block to a comparison
+group $g \in \Gamma$ (default: $\Gamma =$ set of distinct mutation labels).
+For each group $g$, let $\mathcal{B}_g = \{b \in \mathcal{B} \mid \gamma(b) = g\}$ and define
+\begin{align}
+  \overline{\RR}(g)
+    &= \frac{1}{|\mathcal{B}_g|}
+       \sum_{b\,\in\,\mathcal{B}_g} \RR^{(b)},
+    \label{eq:meanRR}\\[4pt]
+  \widetilde{\RR}(g)
+    &= \operatorname{median}_{b\,\in\,\mathcal{B}_g}\bigl\{\RR^{(b)}\bigr\},
+    \label{eq:medianRR}\\[4pt]
+  \overline{\RD}(g)
+    &= \frac{1}{|\mathcal{B}_g|}
+       \sum_{b\,\in\,\mathcal{B}_g} \RD^{(b)}.
+    \label{eq:meanRD}
+\end{align}
+
+Groups are sorted by $\overline{\RR}(g)$ in descending order.
+The full aggregated table is saved to \texttt{group\_level\_summary.csv}.
+
+\begin{remark}[Automatic grouping]
+When the metadata column \texttt{Conditions} takes only a single value across
+all sites (as in this dataset, where all wells share the same growth-factor
+deprived condition), the script automatically uses \texttt{Mutation} as the
+comparison grouping.
+\end{remark}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Formal Summary: The Algorithm}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\begin{snugshade}
+\noindent\textbf{Algorithm~1.} Single-block spatiotemporal propagation analysis.
+
+\medskip
+\noindent\textbf{Input:} block $\mathcal{B}_{e,s}$; spatial radius $r$;
+  quantile $q$; future window $W$; optional fixed threshold $\theta$.
+
+\noindent\textbf{Output:} summary tuple $\phi(\mathcal{B}_{e,s})$.
+
+\medskip
+\begin{enumerate}
+  \item \textit{(Signal delta)} For each $(k,t) \in V$:
+    compute $\dS{k}{t} = \sig{k}{t} - \sig{k}{t_{\mathrm{prev}}}$
+    where $t_{\mathrm{prev}} = \max\{s \in T_k : s < t\}$; set to
+    \texttt{NaN} if no predecessor exists.
+
+  \item \textit{(Threshold)} If no fixed $\theta$:
+    set $\theta \leftarrow Q_q\!\bigl(\{\dS{k}{t} > 0\}\bigr)$.
+
+  \item \textit{(Jump events)} $\JE{k}{t} \leftarrow \1{\dS{k}{t} \geq \theta}$
+    for all $(k,t) \in V$.
+
+  \item \textit{(Spatial edges)} For each frame $t$, build a $k$-d tree on
+    $\{\bm{x}(k,t)\}_{t \in T_k}$ and enumerate all pairs within radius $r$
+    to form $E_{\mathrm{sp},t}$; set $E_{\mathrm{sp}} = \bigcup_t E_{\mathrm{sp},t}$.
+
+  \item \textit{(Temporal edges)} For each track $k$, connect consecutive
+    observations to form $E_{\mathrm{tm}}$.
+
+  \item \textit{(Future self-jump)} For each $(k,t) \in V$:
+    scan frames $t+1, t+2, \ldots, t+W$ in $T_k$ and set
+    $\FJ{k}{t} \leftarrow 1$ if any of them is a jump event.
+
+  \item \textit{(Exposure)} For each $(k,t) \in V$:
+    compute $m(k,t)$ via $E_{\mathrm{sp}}$;
+    set $\expo{k}{t} \leftarrow \1{m(k,t)>0}$.
+
+  \item \textit{(Summary)} Compute $\pE$, $\pU$ via
+    Eqs.~\eqref{eq:pE}--\eqref{eq:pU};
+    return $\RD = \pE - \pU$ and $\RR = \pE/\pU$.
+\end{enumerate}
+\end{snugshade}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Discussion and Connections}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\subsection{What this analysis captures}
+
+The analysis measures the \emph{empirical association} between a current
+neighbourhood jump and a future self-jump, summarised by $\RR$ and $\RD$.
+An $\RR > 1$ is consistent with---but does not prove---mechanisms such as:
+\begin{itemize}
+  \item direct paracrine signalling (e.g.\ secreted growth factors) between
+        physically adjacent cells;
+  \item a common upstream spatial stimulus (e.g.\ a localised wave of
+        extracellular signal) that activates nearby cells in sequence;
+  \item spatially correlated noise in the shared microenvironment.
+\end{itemize}
+
+\subsection{Key assumptions and caveats}
+
+\begin{description}
+  \item[(a) Node independence.]
+        Treating each $(k,t)$ as i.i.d.\ inflates the effective sample size
+        and invalidates standard confidence intervals. A valid uncertainty
+        estimate uses the \emph{track} as the primary sampling unit.
+
+  \item[(b) Threshold sensitivity.]
+        The binary jump indicator depends strongly on $\theta$.
+        The per-block quantile threshold makes blocks non-comparable unless
+        a global $\theta$ is fixed.
+
+  \item[(c) Temporal resolution.]
+        The exposure variable $\expo{k}{t}$ captures \emph{concurrent}
+        neighbour jumps only.  A lagged-exposure analysis
+        (e.g.\ $\expo{k}{t-1}$ or $\expo{k}{t-2}$) would separate
+        temporal precedence from simultaneity.
+
+  \item[(d) Spatial confounding.]
+        Spatially adjacent cells may share microenvironmental conditions
+        (local ECM density, medium gradients) that independently affect
+        signalling, independent of direct cell--cell communication.
+\end{description}
+
+\subsection{Connections to other mathematical frameworks}
+
+\begin{description}
+  \item[Temporal/dynamic networks.]
+        $G = (V, E_{\mathrm{sp}} \cup E_{\mathrm{tm}})$ is a
+        \emph{dynamic graph} in which spatial edge sets change at each
+        time step while temporal edges encode causal ordering within tracks.
+
+  \item[Geometric random graphs.]
+        The spatial edge set $E_{\mathrm{sp},t}$ at any frame $t$ is
+        precisely the edge set of the \emph{unit-disc graph} on centres
+        $\{\bm{x}(k,t)\}$, i.e.\ the intersection graph of discs of
+        radius $r/2$.
+
+  \item[Log-binomial regression.]
+        The $\RR$ estimator can be extended to a fully adjusted model:
+        \[
+          \log \Pr\!\bigl(\FJ{k}{t}=1\bigr)
+          = \alpha + \beta\,\expo{k}{t}
+            + \bm{\gamma}^\top \bm{z}(k,t),
+        \]
+        where $\bm{z}(k,t)$ contains covariates such as nuclear size,
+        baseline signal, or frame number. Then $e^{\hat\beta} \approx \RR$
+        conditionally on those covariates.
+
+  \item[Point process perspective.]
+        The sequence of jump events along a track
+        $\bigl\{t \in T_k : \JE{k}{t}=1\bigr\}$ is a discrete \emph{point
+        process} on the time axis; the analysis asks whether the rate of
+        this process is elevated following a jump in a spatially proximal
+        process.
+\end{description}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section*{Appendix: Notation Summary}
+% ─────────────────────────────────────────────────────────────────────────────
+\addcontentsline{toc}{section}{Appendix: Notation Summary}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.35}
+\begin{tabular}{>{\bfseries}p{3.5cm}p{9.5cm}}
+\toprule
+Symbol & Meaning \\
+\midrule
+$V$ & Set of all (cell, frame) nodes \\
+$E_{\mathrm{sp}}$ & Spatial edges (same frame, within radius $r$) \\
+$E_{\mathrm{tm}}$ & Temporal edges (same track, consecutive frames) \\
+$k$ & Track (cell) index \\
+$t$ & Frame index (integer, $1 \leq t \leq T_{\max}$) \\
+$T_k$ & Set of frames at which track $k$ is observed \\
+$\bm{x}(k,t)$ & Nuclear centroid $(x,y)$ in image pixels \\
+$\sig{k}{t}$ & Signal ratio (ERKKTR or FoxO3A) at node $(k,t)$ \\
+$\dS{k}{t}$ & Signal increment: $\sig{k}{t} - \sig{k}{t_{\mathrm{prev}}}$ \\
+$\theta$ & Jump threshold (fixed or data-driven) \\
+$q$ & Quantile for data-driven $\theta$ (default: $0.90$) \\
+$\JE{k}{t}$ & Jump event: $\mathbf{1}[\dS{k}{t} \geq \theta]$ \\
+$r$ & Spatial radius for neighbourhood (default: 60 units) \\
+$\Nb{k}{t}$ & Spatial neighbourhood of node $(k,t)$ \\
+$n(k,t)$ & Neighbour count: $|\Nb{k}{t}|$ \\
+$m(k,t)$ & Jumping-neighbour count at frame $t$ \\
+$\bar{S}(k,t)$ & Mean signal of spatial neighbours \\
+$\expo{k}{t}$ & Exposure indicator: $\mathbf{1}[m(k,t)>0]$ \\
+$W$ & Future window in frames (default: 3, i.e.\ 15 min) \\
+$\FJ{k}{t}$ & Future self-jump: $\mathbf{1}[\exists\,t'\in(t,t{+}W]:\JE{k}{t'}=1]$ \\
+$\pE,\,\pU$ & Conditional future-jump rates (exposed / unexposed) \\
+$\RD$ & Risk difference: $\pE - \pU$ \\
+$\RR$ & Relative risk: $\pE / \pU$ \\
+$\mathcal{B}_{e,s}$ & Experiment-site block (experiment $e$, site $s$) \\
+$\overline{\RR}(g)$ & Mean relative risk aggregated over group $g$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

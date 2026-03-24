@@ -1,0 +1,915 @@
+\documentclass[11pt,a4paper]{article}
+
+% ─── Packages ────────────────────────────────────────────────────────────────
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{framed}
+\usepackage{url}
+
+% ─── Colours ─────────────────────────────────────────────────────────────────
+\definecolor{biogreen}{RGB}{30,120,70}
+\definecolor{mathblue}{RGB}{10,60,140}
+\definecolor{alertred}{RGB}{150,20,20}
+\definecolor{warmgrey}{RGB}{80,70,60}
+\definecolor{shadecolor}{RGB}{245,248,255}
+
+\hypersetup{colorlinks=true,linkcolor=mathblue,urlcolor=mathblue}
+
+% ─── Theorem-like environments ───────────────────────────────────────────────
+\theoremstyle{definition}
+\newtheorem{task}{Task}
+\newtheorem{question}{Question}
+
+\newenvironment{limitation}[1]{%
+  \begin{leftbar}%
+  \noindent{\bfseries\color{alertred}Limitation: #1}\\[4pt]%
+}{%
+  \end{leftbar}%
+}
+
+\newenvironment{improvement}[1]{%
+  \begin{snugshade}%
+  \noindent{\bfseries\color{biogreen}Proposed improvement: #1}\\[4pt]%
+}{%
+  \end{snugshade}%
+}
+
+% ─── Notation (identical to handout) ────────────────────────────────────────
+\newcommand{\sig}[2]{S_{#1}(#2)}
+\newcommand{\dS}[2]{\Delta S_{#1}(#2)}
+\newcommand{\Nb}[2]{\mathcal{N}_{#1}(#2)}
+\newcommand{\JE}[2]{\mathcal{J}_{#1}(#2)}
+\newcommand{\FJ}[2]{\mathcal{F}_{#1}(#2)}
+\newcommand{\expo}[2]{E_{#1}(#2)}
+\newcommand{\RD}{\mathrm{RD}}
+\newcommand{\RR}{\mathrm{RR}}
+\newcommand{\pE}{p_{\mathrm{exp}}}
+\newcommand{\pU}{p_{\mathrm{unexp}}}
+\newcommand{\1}[1]{\mathbf{1}\!\left[#1\right]}
+\newcommand{\Thr}{\theta}
+
+% ─── Utility ─────────────────────────────────────────────────────────────────
+\definecolor{pathbg}{RGB}{236,241,252}
+\newcommand{\cmd}[1]{\texttt{\small #1}}
+\newcommand{\param}[1]{\texttt{#1}}
+\newcommand{\file}[1]{\path{#1}}
+% \filepath: long paths on their own centred, shaded line (1pt smaller font)
+\newcommand{\filepath}[1]{%
+  \par\smallskip
+  \begin{center}%
+    \colorbox{pathbg}{\small\ttfamily\strut\enspace #1\enspace}%
+  \end{center}%
+  \smallskip\noindent
+}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries\color{mathblue}
+    Spatiotemporal Signal Propagation\\[4pt]
+    3-Hour Classroom Worksheet}\\[10pt]
+  {\large Systems Biology --- University of Warsaw}\\[6pt]
+  {\small\color{warmgrey}
+    Prerequisites: \textit{Spatiotemporal Signal Propagation --- Mathematical
+    Formalization} (companion handout).
+    Notation is identical throughout.}\\[4pt]
+  {\small\color{warmgrey}
+    Scripts: \file{scripts/spatiotemporal\_signal\_propagation.py},
+    \file{scripts/compare\_spatiotemporal\_behavior.py}}
+\end{center}
+
+\vspace{0.5em}
+\noindent\rule{\linewidth}{0.8pt}
+\vspace{0.5em}
+
+\begin{snugshade}
+\noindent\textbf{Session overview.}
+\begin{description}
+  \item[Part~I (90~min)] Guided exploration of the analysis pipeline.
+    You will run single-block and cohort-level analyses, interpret outputs,
+    and develop intuition for the effect of parameter choices.
+  \item[Part~II (90~min)] Critical analysis and algorithmic improvement.
+    You will identify three concrete mathematical limitations of the current
+    approach, derive improved estimators on paper, and implement them.
+\end{description}
+\end{snugshade}
+
+% =============================================================================
+\newpage
+\section*{Part~I\quad Guided Exploration (90~min)}
+\addcontentsline{toc}{section}{Part I --- Guided Exploration}
+% =============================================================================
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection*{Block~1 (25~min)\quad Your first single-block run}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\begin{task}[Setup and first run]\label{task:first-run}
+Navigate to the project root and run the single-block analysis on
+experiment 1, site 1 (a wild-type condition).
+
+\begin{framed}
+\begin{verbatim}
+python scripts/spatiotemporal_signal_propagation.py \
+    --exp-id 1 --site-id 1 \
+    --signal-col ERKKTR_ratio \
+    --spatial-radius 60 \
+    --future-window-frames 3 \
+    --jump-quantile 0.9 \
+    --output-dir analysis_outputs
+\end{verbatim}
+\end{framed}
+
+The script prints a short report. Locate each printed quantity in the
+mathematical formalism of the companion handout.
+
+\medskip
+\noindent\textbf{(a)} How many nodes $|V|$ and spatial edges $|E_{\mathrm{sp}}|$
+were created? What is the ratio $|E_{\mathrm{sp}}|/|V|$? What does this ratio
+tell you about the local density of the cell monolayer?
+
+
+
+\noindent\textbf{(b)} What is the data-driven threshold $\Thr_{0.90}$?
+Using Definition~4 from the handout, write out in words what this value means
+for a cell at an arbitrary node $(k,t)$.
+
+
+
+\noindent\textbf{(c)} Record $\pE$, $\pU$, $\RD$, and $\RR$.
+Is the relative risk $\RR$ greater than, equal to, or less than~1?
+State in one biological sentence what this implies.
+
+
+\end{task}
+
+\begin{task}[Inspect the output tables]\label{task:tables}
+Open the following file in a spreadsheet or with Python
+(\cmd{pd.read\_csv(\ldots, compression='gzip')}):
+\filepath{analysis\_outputs/exp\_1\_site\_1\_ERKKTR\_ratio/nodes.csv.gz}
+
+\medskip
+\noindent\textbf{(a)} For three tracks of your choice, plot $\sig{k}{t}$ over time
+(the column \param{signal\_value}).
+Mark the frames where $\JE{k}{t}=1$ (\param{jump\_event}~$=$ True) with a
+vertical line or a dot.
+Are the jumps isolated single frames, or do they appear in bursts?
+
+
+
+\noindent\textbf{(b)} Filter to rows where \param{future\_self\_jump} is True
+\emph{and} \param{neighbor\_jump\_now} is True.
+How many such rows are there?
+Express this count as a fraction of all \param{neighbor\_jump\_now} = True rows.
+Verify that this matches $\pE$ from Task~\ref{task:first-run}.
+
+
+
+\noindent\textbf{(c)} Compute the mean and standard deviation of
+\param{neighbor\_count} across all nodes.
+Sketch (by hand or code) a histogram of \param{neighbor\_count}.
+At radius $r = 60$, is the neighbourhood sparse or dense?
+
+
+\end{task}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection*{Block~2 (30~min)\quad Parameter sensitivity}
+% ─────────────────────────────────────────────────────────────────────────────
+
+Keeping the same block (exp~1, site~1, ERK signal), re-run the script with the
+following parameter variations.
+Fill in the table below each time; record at minimum $\Thr$, $|E_{\mathrm{sp}}|$,
+$\pE$, $\pU$, $\RR$.
+
+\begin{task}[Varying the spatial radius $r$]\label{task:radius}
+Run with $r \in \{30,\; 60,\; 90,\; 150\}$.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{ccccc}
+\toprule
+$r$ & $|E_{\mathrm{sp}}|$ & $\pE$ & $\pU$ & $\RR$ \\
+\midrule
+30  & & & & \\
+60  & & & & \\
+90  & & & & \\
+150 & & & & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip
+\noindent\textbf{(a)} As $r$ grows, $|E_{\mathrm{sp}}|$ grows roughly how fast?
+(Hint: for a uniform cell density $\rho$ [cells per unit area], the expected
+number of neighbours within radius $r$ is $\mathbb{E}[n(k,t)] \approx \pi r^2 \rho$.
+Does $|E_{\mathrm{sp}}|$ scale as $r^2$?)
+
+
+
+\noindent\textbf{(b)} Does $\RR$ increase or decrease with $r$?
+Explain why a very large $r$ should push $\RR$ toward~1.
+(Hint: consider what happens when almost every cell is a neighbour of every
+other cell.)
+
+
+\end{task}
+
+\begin{task}[Varying the future window $W$]\label{task:window}
+Run with $W \in \{1,\; 3,\; 6,\; 12\}$ (keeping $r=60$).
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{ccccc}
+\toprule
+$W$ (frames) & $W \cdot 5$ min & $\pE$ & $\pU$ & $\RR$ \\
+\midrule
+1  & 5 min  & & & \\
+3  & 15 min & & & \\
+6  & 30 min & & & \\
+12 & 60 min & & & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip
+\noindent\textbf{(a)} Does $\pE$ increase or decrease with $W$?
+Is the same trend observed for $\pU$?
+Why does both rates rising not necessarily imply that $\RR$ changes?
+
+
+
+\noindent\textbf{(b)} At what window length does $\RR$ peak?
+What does this suggest about the timescale of cell-to-cell ERK coordination
+in this dataset?
+
+
+\end{task}
+
+\begin{task}[Varying the jump quantile $q$]\label{task:quantile}
+Run with $q \in \{0.70,\; 0.80,\; 0.90,\; 0.95\}$ (keeping $r=60$, $W=3$).
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{ccccc}
+\toprule
+$q$ & $\Thr_q$ & $\pE$ & $\pU$ & $\RR$ \\
+\midrule
+0.70 & & & & \\
+0.80 & & & & \\
+0.90 & & & & \\
+0.95 & & & & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip
+\noindent\textbf{(a)} As $q$ increases, fewer nodes satisfy $\JE{k}{t}=1$.
+How does the fraction of jump events scale with $q$?
+
+
+
+\noindent\textbf{(b)} Does increasing $q$ (i.e.\ using a stricter threshold
+for calling a ``jump'') increase or decrease $\RR$?
+Propose a biological interpretation: are rarer, larger jumps more or less
+spatially coordinated in this dataset?
+
+
+\end{task}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection*{Block~3 (35~min)\quad Comparing individual conditions and
+  running a cohort}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\begin{task}[Manual pairwise comparison]\label{task:pairwise}
+According to the metadata file
+\filepath{01-readme-experiment-description\_2022-04-05.csv}
+sites 1--4 are WT and sites 9--12 are PIK3CA E545K.
+Run the single-block script separately for \textbf{site~1 (WT)} and
+\textbf{site~9 (PIK3CA E545K)}.
+
+\medskip
+\noindent Fill in the table (use the same $r=60$, $W=3$, $q=0.90$):
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{lccccc}
+\toprule
+Condition & Site & $\Thr$ & $\pE$ & $\pU$ & $\RR$ \\
+\midrule
+WT           & 1 & & & & \\
+PIK3CA E545K & 9 & & & & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip
+\noindent\textbf{(a)} Is $\RR$ higher or lower for the PIK3CA mutant compared
+to WT?
+PIK3CA E545K is a gain-of-function oncogenic mutation that hyperactivates PI3K
+signalling. Based on your result, does hyperactive PI3K increase or decrease
+ERK-activity coordination among neighbours?
+
+
+
+\noindent\textbf{(b)} Can you directly compare the two $\Thr$ values?
+Why or why not?
+(This question anticipates Limitation~L2 in Part~II.)
+
+
+\end{task}
+
+\begin{task}[Cohort-level analysis with the comparison script]\label{task:cohort}
+Run the multi-block comparison script to aggregate all available
+blocks and compare by mutation:
+
+\begin{framed}
+\begin{verbatim}
+python scripts/compare_spatiotemporal_behavior.py \
+    --signal-col ERKKTR_ratio \
+    --group-by mutation \
+    --spatial-radius 60 \
+    --future-window-frames 3 \
+    --jump-quantile 0.9 \
+    --exclude-mutations ErbB2 \
+    --output-dir analysis_outputs
+\end{verbatim}
+\end{framed}
+
+Open the group-level summary:
+\filepath{analysis\_outputs/comparison\_mutation\_ERKKTR\_ratio/group\_level\_summary.csv}
+
+\medskip
+\noindent\textbf{(a)} Which mutation has the \emph{highest} $\overline{\RR}$?
+Which has the lowest?
+Does the ordering match your expectation from the PI3K pathway hierarchy
+(PI3K $\to$ AKT $\to$ PTEN)?
+
+
+
+\noindent\textbf{(b)} Note the column \param{n\_blocks} for each group.
+Some mutations have more replicate blocks than others.
+Why is $\overline{\RR}$ (the mean over blocks) a fragile summary when
+\param{n\_blocks} is small?
+
+
+
+\noindent\textbf{(c)} Repeat the cohort run with \param{--signal-col FoxO3A\_ratio}.
+Fill in the comparison table:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{lcc}
+\toprule
+Mutation & $\overline{\RR}$ (ERK) & $\overline{\RR}$ (FoxO3A) \\
+\midrule
+WT           & & \\
+AKT1 E17K    & & \\
+PIK3CA E545K & & \\
+PIK3CA H1047R& & \\
+PTEN del     & & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Is ERK or FoxO3A more spatially coordinated overall?
+Given that FoxO3A is a direct AKT substrate while ERK is a MAPK downstream of
+RAS, does the difference make biological sense?
+
+
+\end{task}
+
+% =============================================================================
+\newpage
+\section*{Part~II\quad Critical Analysis and Algorithmic Improvement (90~min)}
+\addcontentsline{toc}{section}{Part II --- Critical Analysis and Algorithmic Improvement}
+% =============================================================================
+
+\noindent The analysis you have run so far is a solid first pass.
+In this part you will identify three mathematical limitations, see concretely
+why each one matters, and then derive and implement an improved estimator.
+All improvements are achievable with NumPy/pandas without modifying the
+original scripts beyond a new analysis function.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection*{Limitation~L1 (25~min)\quad Simultaneity: exposure and response
+  are not properly ordered in time}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\subsubsection*{The problem}
+
+Recall the exposure indicator (Definition~5 of the handout):
+\[
+  \expo{k}{t} \;=\; \1{m(k,t) > 0}
+  \qquad\text{where}\qquad
+  m(k,t) = \sum_{(k',t)\,\in\,\Nb{k}{t}} \JE{k'}{t}.
+\]
+The neighbour's jump $\JE{k'}{t}$ is measured \emph{at the same frame $t$}
+as the focal cell is observed.
+But the future self-jump is defined as
+$\FJ{k}{t} = \1{\exists\, t' \in (t, t{+}W] : \JE{k}{t'}=1}$.
+
+\medskip
+\noindent\textbf{The temporal ordering problem.}
+Both the neighbour's jump $\JE{k'}{t}$ and the future-jump window
+$(t, t{+}W]$ are anchored to the same frame $t$.
+If cell $k'$ jumps at frame $t$ and cell $k$ jumps at frame $t+1$, the
+current analysis classifies this as a ``successful propagation event''.
+But it could equally be that both cells respond to the same upstream stimulus
+arriving at frame~$t$ --- there is no \emph{temporal precedence} in the
+measurement.
+More critically, the current formula also counts cases where \emph{cell $k$
+itself jumps simultaneously} with its neighbour (at frame $t$) and then again
+within $(t, t+W]$, even if the two events are independent.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{ccccc}
+\toprule
+Frame & $\JE{k}{t}$ & $\JE{k'}{t}$ & $\expo{k}{t}$ & $\FJ{k}{t}$
+  (W=3) \\
+\midrule
+$t$   & 0 & 1 & 1 & ? \\
+$t+1$ & 1 & 0 & 0 & \\
+$t+2$ & 0 & 0 & 0 & \\
+$t+3$ & 0 & 0 & 0 & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{question}
+In the table above, what is $\FJ{k}{t}$?
+Does the sequence truly suggest that cell $k'$ ``caused'' cell $k$ to jump?
+Can you construct a scenario where the assignment $\FJ{k}{t}=1$ is misleading?
+
+\end{question}
+
+\subsubsection*{Proposed improvement: lagged exposure}
+
+\begin{improvement}{Lagged exposure $E_k^{(\tau)}(t)$}
+For a \emph{lag} $\tau \in \{1, 2, \ldots\}$ (in frames), define the
+\textbf{lagged exposure indicator}
+\[
+  \expo{k}{t}^{(\tau)}
+  \;=\; \1{m(k,\,t-\tau) > 0},
+\]
+where $m(k, t-\tau)$ counts how many of cell $k$'s spatial neighbours at
+frame $t-\tau$ were jumping at that earlier frame.
+The lagged relative risk is then
+\[
+  \RR^{(\tau)}
+  \;=\;
+  \frac{\Pr\!\bigl(\FJ{k}{t}=1 \;\big|\; \expo{k}{t}^{(\tau)}=1\bigr)}
+       {\Pr\!\bigl(\FJ{k}{t}=1 \;\big|\; \expo{k}{t}^{(\tau)}=0\bigr)}.
+\]
+For $\tau = 0$ this reduces to the original $\RR$.
+For $\tau \geq 1$, the neighbour's jump \emph{strictly precedes} the focal
+cell's look-ahead window, providing genuine temporal precedence.
+\end{improvement}
+
+\medskip
+\noindent The key insight is: if signal truly propagates from a jumping neighbour
+\emph{to} the focal cell, we expect $\RR^{(\tau)} > 1$ for small lags
+$\tau \approx 1$--$3$ and then $\RR^{(\tau)} \to 1$ as $\tau$ grows beyond the
+signalling timescale.
+
+\begin{task}[Implement and plot $\RR^{(\tau)}$ vs.\ $\tau$]\label{task:lag}
+Load the node table you saved in Task~\ref{task:tables}
+(\file{nodes.csv.gz} for exp~1, site~1).
+
+\medskip
+\noindent\textbf{Step 1.}
+The current table already contains \param{neighbor\_jump\_now} (which is
+$\expo{k}{t}^{(0)}$).
+You need to construct $\expo{k}{t}^{(\tau)}$ for $\tau = 1, 2, 3, 4, 5$.
+Within each track, shift the column \param{neighbor\_jump\_now} forward
+by $\tau$ frames:
+\begin{framed}
+\begin{verbatim}
+# Example in pandas (nodes_df loaded from nodes.csv.gz)
+nodes_df = nodes_df.sort_values(['track_id', 'Image_Metadata_T'])
+for tau in range(1, 6):
+    nodes_df[f'lagged_exposure_{tau}'] = (
+        nodes_df.groupby('track_id')['neighbor_jump_now']
+        .shift(tau)          # shift forward by tau frames within track
+        .fillna(False)
+    )
+\end{verbatim}
+\end{framed}
+
+\noindent\textbf{Step 2.}
+For each $\tau \in \{0, 1, 2, 3, 4, 5\}$, compute $\RR^{(\tau)}$:
+
+\begin{framed}
+\begin{verbatim}
+import numpy as np
+results = {}
+for tau in range(6):
+    col = 'neighbor_jump_now' if tau == 0 else f'lagged_exposure_{tau}'
+    exposed   = nodes_df[nodes_df[col] == True]['future_self_jump']
+    unexposed = nodes_df[nodes_df[col] == False]['future_self_jump']
+    p_exp   = exposed.mean()
+    p_unexp = unexposed.mean()
+    results[tau] = {'p_exp': p_exp, 'p_unexp': p_unexp,
+                    'RR': p_exp / p_unexp if p_unexp > 0 else np.nan}
+\end{verbatim}
+\end{framed}
+
+\noindent\textbf{Step 3.}
+Plot $\RR^{(\tau)}$ against $\tau$ (x-axis: lag in frames; optionally
+convert to minutes using $5$ min/frame).
+Add a horizontal dashed line at $\RR = 1$ as a reference.
+
+\medskip
+\noindent\textbf{(a)} At which lag $\tau^*$ is $\RR^{(\tau)}$ highest?
+What is the corresponding physical time $\tau^* \times 5$~min?
+Does this suggest a rapid or slow cell-to-cell ERK relay?
+
+
+
+\noindent\textbf{(b)} Does $\RR^{(\tau)}$ drop below~1 at large $\tau$,
+or does it plateau?
+What does each scenario imply about the persistence of spatial ERK
+coordination?
+
+
+
+\noindent\textbf{(c)} Compare $\RR^{(0)}$ (original) with $\RR^{(1)}$.
+Is the original estimator inflated, deflated, or unaffected by the
+simultaneity issue for this dataset?
+
+
+\end{task}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection*{Limitation~L2 (30~min)\quad Non-comparable thresholds across blocks}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\subsubsection*{The problem}
+
+Recall Definition~4 of the handout: when no global threshold is specified,
+each block $b$ uses its own data-driven threshold
+$\Thr_b = Q_q(\mathcal{D}_b^+)$,
+where $\mathcal{D}_b^+$ is the set of positive increments \emph{within block $b$}.
+
+This creates a serious comparability problem.
+Let $\mu_b = \mathbb{E}[\dS{k}{t}^+]$ be the mean positive increment in
+block $b$.
+If a mutant cell line has systematically larger ERK pulses
+($\mu_{\mathrm{mut}} > \mu_{\mathrm{WT}}$), its per-block threshold
+$\Thr_{\mathrm{mut}}$ will also be larger.
+The consequence:
+
+\medskip
+\noindent\textbf{Worked numerical example.}
+Suppose we observe (in arbitrary ratio units):
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lccc}
+\toprule
+Block & Positive increments $\mathcal{D}^+$ (sample) & $\Thr_{0.90}$ & \% nodes called jumps \\
+\midrule
+WT           & $\{0.01,\ldots,0.10\}$, mean $0.03$ & $0.07$ & $10\%$ \\
+PTEN del     & $\{0.03,\ldots,0.30\}$, mean $0.09$ & $0.21$ & $10\%$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Both blocks end up labelling exactly $10\%$ of nodes as jumps (by
+construction of the quantile threshold).
+But PTEN-deleted cells show a \emph{three-fold larger} typical increment.
+The per-block threshold hides this biological difference: we are comparing
+``top-10\% ERK steps within WT'' to ``top-10\% ERK steps within PTEN del'',
+which are intrinsically different events.
+
+\begin{question}
+In the above example, if we instead used a single global threshold
+$\Thr_{\mathrm{global}} = Q_{0.90}(\mathcal{D}_{\mathrm{all}}^+)$
+computed from \emph{all blocks together}, which mutation would have more
+jump events?
+Does the relative $\RR$ estimate between mutations change?
+Explain why this matters for a \emph{cross-group comparison}.
+
+\end{question}
+
+\subsubsection*{Proposed improvement: global cross-block threshold}
+
+\begin{improvement}{Global threshold $\Thr^*$}
+Collect all positive signal increments from every block in the comparison:
+\[
+  \mathcal{D}_{\mathrm{all}}^+
+  \;=\; \bigcup_{b\,\in\,\mathcal{B}} \mathcal{D}_b^+
+  \;=\; \bigcup_{b\,\in\,\mathcal{B}}
+    \bigl\{\dS{k}{t} \;\big|\; (k,t) \in V_b,\; \dS{k}{t} > 0\bigr\}.
+\]
+Define the \textbf{global threshold}
+\[
+  \Thr^* = Q_q\!\bigl(\mathcal{D}_{\mathrm{all}}^+\bigr).
+\]
+Re-run the single-block analysis for each block with this fixed $\Thr^*$
+(using the \param{--jump-threshold} flag instead of \param{--jump-quantile}).
+Under the global threshold, the same increment size counts as a jump in
+every block, making cross-group $\RR$ values directly comparable.
+\end{improvement}
+
+\begin{task}[Implement global-threshold comparison]\label{task:global-threshold}
+You will need to do this in two steps.
+
+\medskip
+\noindent\textbf{Step 1: Estimate $\Thr^*$.}
+For each mutation's site(s), load the node table(s) and pool the positive
+increments. (If you only have WT data from Task~\ref{task:first-run},
+use those.)
+\begin{framed}
+\begin{verbatim}
+import pandas as pd, numpy as np
+
+all_deltas = []
+for node_file in your_node_files:          # list of nodes.csv.gz paths
+    df = pd.read_csv(node_file)
+    pos = df['signal_delta'].dropna()
+    all_deltas.append(pos[pos > 0].values)
+
+all_deltas = np.concatenate(all_deltas)
+theta_star = float(np.quantile(all_deltas, 0.90))
+print(f"Global threshold theta* = {theta_star:.4f}")
+\end{verbatim}
+\end{framed}
+
+\noindent\textbf{Step 2: Re-run with global threshold.}
+\begin{framed}
+\begin{verbatim}
+python scripts/spatiotemporal_signal_propagation.py \
+    --exp-id 1 --site-id 9 \
+    --signal-col ERKKTR_ratio \
+    --jump-threshold <theta_star> \
+    --output-dir analysis_outputs_global
+\end{verbatim}
+\end{framed}
+
+\noindent\textbf{(a)} Compare the fraction of nodes labelled as jumps between WT
+(site~1) and PIK3CA E545K (site~9) when using (i)~per-block thresholds
+vs.\ (ii)~the global threshold $\Thr^*$.
+Do the two conditions differ in jump frequency under the global threshold?
+
+
+
+\noindent\textbf{(b)} Compare $\RR_{\mathrm{WT}}$ and $\RR_{\mathrm{PIK3CA}}$
+under per-block vs.\ global thresholds.
+Does the ranking of conditions change?
+Which comparison do you trust more for a biological claim about
+``whose cells are more spatially coordinated''?
+
+
+
+\noindent\textbf{(c)} Formally, define the \emph{bias} of the per-block estimator.
+Let $\RR_b^{\mathrm{per}}$ be computed with $\Thr_b$ and
+$\RR_b^{\mathrm{global}}$ be computed with $\Thr^*$.
+What conditions on $\Thr_b$ vs.\ $\Thr^*$ would make
+$\RR_b^{\mathrm{per}} > \RR_b^{\mathrm{global}}$?
+(Hint: think about which nodes shift from ``not a jump'' to ``a jump''
+when the threshold is lowered.)
+
+
+\end{task}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection*{Limitation~L3 (35~min)\quad Binary exposure discards
+  neighbourhood-intensity information}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\subsubsection*{The problem}
+
+The exposure indicator
+\[
+  \expo{k}{t} = \1{m(k,t) > 0}
+\]
+is binary: a node is ``exposed'' even if only \emph{one} of its $n(k,t)$
+neighbours is jumping, and it receives the same label whether $1$ or $8$
+neighbours are jumping simultaneously.
+
+This collapses the entire neighbourhood into a single bit and discards two
+sources of potentially important information:
+\begin{enumerate}
+  \item \textbf{Fraction of jumping neighbours.}
+        A cell surrounded by $8$ jumping neighbours might be more strongly
+        stimulated than one with only $1$ jumping neighbour.
+  \item \textbf{Intensity of the neighbourhood signal.}
+        The mean signal $\bar{S}(k,t)$ of the neighbourhood (already computed
+        in the node table as \param{neighbor\_mean\_signal}) carries information
+        about the ambient signalling environment that is ignored by the binary
+        indicator.
+\end{enumerate}
+
+\begin{question}
+Consider two nodes $(k,t)$ and $(k',t')$, both with
+$n = 8$ spatial neighbours.
+Cell $k$ has $m=1$ jumping neighbour; cell $k'$ has $m=8$ jumping neighbours.
+Under the current formulation, both are ``exposed'' equally
+($\expo{k}{t} = \expo{k'}{t'} = 1$).
+
+Does it seem reasonable to you that both cells should have the
+same expected future-jump probability $\pE$?
+What biological mechanism would justify equal treatment?
+What mechanism would predict that $k'$ (with 8 jumping neighbours) is more
+likely to jump in the near future?
+
+
+\end{question}
+
+\subsubsection*{Proposed improvement A: fractional exposure}
+
+\begin{improvement}{Fractional exposure $\tilde{E}_k(t)$}
+Replace the binary indicator with the \textbf{fraction of jumping
+neighbours}:
+\[
+  \tilde{E}_k(t)
+  \;=\;
+  \begin{cases}
+    m(k,t) / n(k,t) & \text{if } n(k,t) > 0, \\
+    0               & \text{if } n(k,t) = 0.
+  \end{cases}
+\]
+$\tilde{E}_k(t) \in [0,1]$.
+Partition nodes into exposure \emph{bins}
+$[0, \frac{1}{B}), [\frac{1}{B}, \frac{2}{B}), \ldots, [\frac{B-1}{B}, 1]$
+and compute a separate future-jump rate $p_b$ for each bin.
+A dose--response relationship ($p_b$ increasing with bin index) would support
+the hypothesis that more jumping neighbours produce stronger induction.
+\end{improvement}
+
+\subsubsection*{Proposed improvement B: signal-level exposure}
+
+\begin{improvement}{Neighbourhood-signal exposure $\hat{E}_k(t)$}
+Use the \textbf{mean neighbour signal} as a continuous exposure variable:
+\[
+  \hat{E}_k(t) \;=\; \bar{S}(k,t)
+  \;=\; \frac{1}{n(k,t)}\sum_{(k',t)\,\in\,\Nb{k}{t}} \sig{k'}{t}.
+\]
+Discretize $\hat{E}_k(t)$ into quartiles $Q_1$--$Q_4$ across all nodes with
+$n(k,t) > 0$.
+Compute the future-jump rate $p_{Q_j}$ for each quartile.
+An increasing pattern (higher ambient neighbourhood signal $\Rightarrow$
+higher future-jump probability) would indicate that the mean state of the
+neighbourhood, not just its ``jumpiness'', predicts self-activation.
+\end{improvement}
+
+\begin{task}[Implement dose--response analysis]\label{task:dose-response}
+Using the node table from Task~\ref{task:tables}, implement both improvements.
+
+\medskip
+\noindent\textbf{Step 1: Fractional exposure.}
+\begin{framed}
+\begin{verbatim}
+df = pd.read_csv('nodes.csv.gz')
+
+# fractional exposure: use neighbour_jump_count / neighbour_count
+df['frac_exposure'] = (
+    df['neighbor_jump_count'] / df['neighbor_count'].replace(0, np.nan)
+).fillna(0.0)
+
+# bin into 5 levels: 0, (0,0.25], (0.25,0.5], (0.5,0.75], (0.75,1]
+bins   = [-0.001, 0.0, 0.25, 0.50, 0.75, 1.01]
+labels = ['0', '(0,0.25]', '(0.25,0.5]', '(0.5,0.75]', '(0.75,1]']
+df['frac_bin'] = pd.cut(df['frac_exposure'], bins=bins, labels=labels)
+
+dose_response = (df.groupby('frac_bin', observed=True)['future_self_jump']
+                   .agg(['mean', 'count'])
+                   .rename(columns={'mean': 'future_jump_rate',
+                                    'count': 'n_nodes'}))
+print(dose_response)
+\end{verbatim}
+\end{framed}
+
+\noindent\textbf{Step 2: Neighbourhood-signal exposure.}
+\begin{framed}
+\begin{verbatim}
+has_nb = df['neighbor_count'] > 0
+df.loc[has_nb, 'nb_signal_quartile'] = pd.qcut(
+    df.loc[has_nb, 'neighbor_mean_signal'], q=4,
+    labels=['Q1','Q2','Q3','Q4']
+)
+nb_dose = (df.groupby('nb_signal_quartile', observed=True)['future_self_jump']
+             .agg(['mean','count'])
+             .rename(columns={'mean':'future_jump_rate','count':'n_nodes'}))
+print(nb_dose)
+\end{verbatim}
+\end{framed}
+
+\noindent\textbf{(a)} Plot the dose--response curves for both improvements
+(bar chart or line plot: x-axis = bin/quartile, y-axis = $p_b$).
+Does the fractional-exposure curve ($\tilde{E}$) show a monotone
+dose--response?
+What would a flat curve (all bins equal) imply biologically?
+
+
+
+\noindent\textbf{(b)} Now compute a single summary statistic analogous to $\RR$
+for the fractional exposure.
+Define the \emph{graded relative risk}:
+\[
+  \widetilde{\RR}
+  \;=\;
+  \frac{p_{B}}{p_{0}},
+\]
+where $p_B$ is the future-jump rate in the highest fraction bin and $p_0$ is
+the rate in the zero-exposure bin ($\tilde{E}=0$).
+Compare $\widetilde{\RR}$ with the original $\RR$ from Task~\ref{task:first-run}.
+Which estimator is larger?
+Why does $\widetilde{\RR}$ represent a ``cleaner'' signal?
+
+
+
+\noindent\textbf{(c)} Does the neighbourhood signal level $\hat{E}_k(t)$
+independently predict future self-jumping (beyond the binary jump indicator)?
+In other words, do cells in high-signal neighbourhoods (Q4) jump more in the
+future even when $\expo{k}{t}=0$ (no jumping neighbour)?
+Filter the data to \param{neighbor\_jump\_now}~$=$~False and repeat
+the quartile analysis for this sub-population.
+
+
+\end{task}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection*{Synthesis (bonus, 10~min)}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\begin{task}[Combining all three improvements]\label{task:synthesis}
+You now have three independently derived improvements:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lll}
+\toprule
+Limitation & Improvement & Key new quantity \\
+\midrule
+L1: simultaneity & Lagged exposure & $\expo{k}{t}^{(\tau)}$, $\RR^{(\tau)}$ \\
+L2: non-comparable thresholds & Global threshold & $\Thr^*$, $\RR_b^{\mathrm{global}}$ \\
+L3: binary exposure & Fractional/signal exposure & $\tilde{E}_k(t)$, $\widetilde{\RR}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Suppose you wanted to combine improvements L1 and L3 into a single estimator.
+Write down the mathematical definition of the \emph{lagged fractional exposure}
+\[
+  \tilde{E}_k^{(\tau)}(t) \;=\; \frac{m(k,\,t-\tau)}{n(k,\,t-\tau)},
+\]
+and the corresponding graded relative risk
+\[
+  \widetilde{\RR}^{(\tau)} \;=\; \frac{p_B^{(\tau)}}{p_0^{(\tau)}},
+\]
+where $p_B^{(\tau)}$ is the future-jump rate for nodes in the highest
+fractional-exposure bin \emph{at lag $\tau$}.
+
+\medskip
+\noindent\textbf{(a)} Implement $\widetilde{\RR}^{(\tau)}$ for
+$\tau \in \{0, 1, 2, 3, 4\}$ and plot the resulting lag curve.
+Does it peak at the same $\tau^*$ as the binary $\RR^{(\tau)}$ from
+Task~\ref{task:lag}?
+
+
+
+\noindent\textbf{(b)} \textbf{Open discussion (no single correct answer):}
+What further mathematical improvement would you propose?
+Some options to consider:
+\begin{itemize}
+  \item Accounting for the directionality of cell movement (use a
+        directional neighbourhood cone rather than a symmetric ball).
+  \item Using a continuous signal increment $\dS{k}{t}$ instead of the
+        binary $\JE{k}{t}$ to define a ``soft jump'' probability via a
+        sigmoid function.
+  \item Replacing the empirical mean estimators for $\pE$ and $\pU$ with a
+        mixed-effects logistic regression that treats the track as a random
+        effect, properly handling the non-independence of nodes.
+\end{itemize}
+Describe your chosen improvement in mathematical notation and sketch
+the implementation.
+
+
+
+\end{task}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\bigskip
+\noindent\rule{\linewidth}{0.8pt}
+\begin{center}
+{\small\color{warmgrey}
+  Notation follows the companion handout exactly.
+  All tasks assume Python~3, pandas, NumPy, and the project virtual environment.
+  Refer to the notation table in the Appendix of the handout for symbol
+  definitions.}
+\end{center}
+
+\end{document}

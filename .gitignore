@@ -1,0 +1,34 @@
+# ── Virtual environment ───────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+
+# ── Data (distributed via Google Drive) ──────────────────────────────────────
+*.csv.gz
+*.csv.zip
+
+# ── Analysis outputs (generated locally by running the scripts) ───────────────
+analysis_outputs/
+
+# ── Folders not for public repo ──────────────────────────────────────────────
+teacher-notebooks/
+students-notebooks/
+notebooks/
+spatiotemporal-starter/
+spatiotemporal-starter.zip
+
+# ── LaTeX build artefacts ────────────────────────────────────────────────────
+notes/*.aux
+notes/*.log
+notes/*.out
+notes/*.toc
+notes/*.synctex.gz
+
+# ── macOS / editor junk ───────────────────────────────────────────────────────
+.DS_Store
+.idea/
+.vscode/
+*.swp
