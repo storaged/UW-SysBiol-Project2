@@ -6,9 +6,10 @@ __pycache__/
 *.pyc
 *.pyo
 
-# ── Data (distributed via Google Drive) ──────────────────────────────────────
+# ── Data (distributed via Moodle / Google Drive) ─────────────────────────────
 *.csv.gz
 *.csv.zip
+01-readme-*.csv
 
 # ── Analysis outputs (generated locally by running the scripts) ───────────────
 analysis_outputs/
